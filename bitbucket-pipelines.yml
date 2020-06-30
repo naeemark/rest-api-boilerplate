@@ -1,0 +1,47 @@
+definitions:
+  options:
+    docker: true
+  caches:
+    npm-custom: /root/.npm-cache
+    sonar: ~/.sonar/cache # Caching SonarCloud artifacts will speed up your build
+  steps:
+    - step: &build-test
+        name: Build and Test
+        caches:
+          - node
+          - npm-custom
+        image: node:10.15.3
+        script:
+          - export NODE_ENV=test
+          - export PORT=5000
+          - npm config set cache /root/.npm-cache
+          - npm install --pure-lockfile
+          - sleep 5
+          - npm test
+        artifacts:
+          - coverage/**
+
+    - step: &sonar_scan
+        image: naeemark/sonar-scanner:latest
+        name: Sonar -> Analyse, Push
+        script:
+          - echo "Scanning for SonarCloud"
+
+    - step: &build_publish_docker_image
+        name: Build, Push Docker Image
+        services:
+          - docker
+        caches:
+          - docker
+        script:
+          - echo "Building and Pushing Docker Image"
+
+    - step: &deploy_dev
+        name: Deploy to Dev
+        script:
+          - echo "Deploy Docker Image to Heroku"
+
+pipelines:
+  branches:
+    x-test:
+      - step: *build-test
